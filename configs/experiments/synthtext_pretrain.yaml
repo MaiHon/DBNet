@@ -1,0 +1,82 @@
+experiment:
+  name: 'SynthText_DCN_ResNet50'
+  group: 'SynthText'
+  log_model: true
+  wandb: true
+  log_step: true
+
+
+general:
+  seed: 822
+  gpus: [0]
+  precision: 32
+  distributed: false
+
+
+model: 'configs/model/dcn_resnet50.yaml'
+post_processing:
+  type: 'Seg2BoxOrPoly'
+  args:
+    thresh: 0.3
+    box_thresh: 0.6
+    max_candidates: 1000
+    unclip_ratio: 1.5
+  is_output_polygon: false
+
+
+train:
+  root: 'data'
+  base: 'configs/data/synthtext.yaml'
+  frac: [0.5]
+
+  dataset: null
+  
+  show: true
+  show_interval: 50
+  save_top_k: 5
+  save_interval: 1000
+
+  max_steps: 100000
+  loader:
+    batch_size: 8
+    shuffle: true
+    pin_memory: true
+    num_workers: 8
+    collate_fn: 'DBNetCollateFN'
+
+  criterion:
+    name: 'DBLoss'
+    args:
+      alpha: 5.0
+      beta: 10
+      ohem_ratio: 3
+      eps: 0.0000001
+
+  optimizer:
+    name: 'SGD'
+    args:
+      lr: 0.007
+      weight_decay: 0.0001
+      momentum: 0.9
+
+  scheduler:
+    factor: 0.9
+
+valid:
+  root: 'data'
+  base: 'configs/data/icdar15_valid.yaml'
+  frac: [1.0]
+
+  dataset: null
+
+  show: true
+  show_interval: 20
+  save_top_k: 5
+  save_interval: 1000
+
+  loader:
+    batch_size: 1
+    shuffle: False
+    pin_memory: true
+    num_workers: 8
+    collate_fn: 'DBNetCollateFN'

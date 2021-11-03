@@ -1,0 +1,8 @@
+model: 'configs/dbnet/dcn_resnet50.yaml'
+train:
+  root: 'data'
+  base: 'configs/data/icdar13_train.yaml'
+
+valid:
+  root: 'data'
+  base: 'configs/data/icdar13_valid.yaml'

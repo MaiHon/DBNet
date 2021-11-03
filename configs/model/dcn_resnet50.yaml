@@ -1,0 +1,14 @@
+name: DBNet
+backbone: 'deformable_resnet50'
+pretrained: ''
+backbone_args:
+  pretrained: True
+
+fpn_args:
+  in_chans: [256, 512, 1024, 2048]
+  mid_chans: 256
+  inplace: True
+
+dbhead_args:
+  in_chans: 256
+  k: 50

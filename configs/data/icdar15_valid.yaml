@@ -1,0 +1,28 @@
+dataset:
+  name: 'ICDAR15DS'
+  root_path: 'ICDAR15/test_im'
+  annot_path: 'ICDAR15/test_gt'
+  args:
+    ignore_tags: ["###", ""]
+    filter_keys: []
+    return_origin: true
+    pre_processes:
+      - type: ResizeShortSize
+        args:
+          short_size: 736
+          resize_text_polys: false
+      # - type: 'IaaAugment'
+      #   args:
+      #     - ['Resize', {'width': 1280, 'height': 736}]
+      #     # - ['Resize', {'width': 2048, 'height': 1152}]
+      #   only_resize: True
+      #   keep_ratio: True
+
+    transforms: # torchvision.transforms
+      - type: 'ToTensor'  # tfms means albumentations.pytorch.transforms
+        args: {}
+
+      - type: 'Normalize'
+        args:
+          mean: [0.485, 0.456, 0.406]
+          std: [0.229, 0.224, 0.225]

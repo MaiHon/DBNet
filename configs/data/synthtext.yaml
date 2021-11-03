@@ -1,0 +1,46 @@
+dataset:
+  name: 'SynthTextDS'
+  root_path: 'SynthText'
+  annot_path: 'SynthText/gt.mat'
+  args:
+    ignore_tags: ['*', '###']
+    filter_keys: []
+    return_origin: false
+    collate_fn: 'DBNetCollateFN'
+    pre_processes:
+      - type: 'IaaAugment'
+        args:
+          - {'type':Fliplr, 'args':{'p':0.5}}
+          - {'type': Affine, 'args':{'rotate':[-10,10]}}
+          - {'type':Resize,'args':{'size':[0.5,3.0]}}
+        only_resize: False
+        keep_ratio: False
+
+      - type: 'RandomCrop'
+        args:
+          crop_size: [640, 640]
+          max_tries: 50
+          keep_ratio: True
+          min_crop_side_ratio: 0.1
+
+      - type: 'ProbabiltyMapGenerator'
+        args:
+          shrink_ratio: 0.4
+          min_text_size: 8
+          same_offset: True
+
+      - type: 'ThresholdMapGenerator'
+        args:
+          shrink_ratio: 0.4
+          min_thresh: 0.3
+          max_thresh: 0.7
+          same_offset: True
+
+    transforms: # torchvision.transforms
+      - type: 'ToTensor'
+        args: {}
+
+      - type: 'Normalize'
+        args:
+          mean: [0.485, 0.456, 0.406]
+          std: [0.229, 0.224, 0.225]
