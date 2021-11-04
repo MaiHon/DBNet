@@ -18,6 +18,8 @@ class FPN(nn.Module):
         self.use_p6 = use_p6
         self.for_detect = for_detect
         divisor = 5 if use_p6 else 4
+        divisor = 1 if for_detect else divisor
+        
         if self.use_p6:
             self.conv1x1_c6 = nn.MaxPool2d(kernel_size=1, stride=2)
             self.conv3x3_c6 = Conv3x3(mid_chans, mid_chans//divisor)
@@ -37,12 +39,7 @@ class FPN(nn.Module):
 
     def forward(self, inp):
         bottom_ups = self.bottom_up(*inp)
-        if self.for_detect:
-            return bottom_ups
-        else:
-            out = self.top_down(bottom_ups)
-            return out
-
+        return self.top_down(bottom_ups)
 
 
     def _init_layers(self):
@@ -94,25 +91,24 @@ class FPN(nn.Module):
             p2, p3, p4, p5 = bottom_ups
 
         h, w = p2.size()[2:]
-
-        p2 = self.conv3x3_c2(p2)
-
-        p3 = self.conv3x3_c3(p3)
-        p3 = F.interpolate(p3, size=(h, w), mode='nearest')
-
-        p4 = self.conv3x3_c4(p4)
-        p4 = F.interpolate(p4, size=(h, w), mode='nearest')
-
-        p5 = self.conv3x3_c5(p5)
-        p5 = F.interpolate(p5, size=(h, w), mode='nearest')
-
-        res = [p2, p3, p4, p5]
+        new_p5 = self.conv3x3_c5(p5)
         if self.use_p6:
-            p6 = self.conv3x3_c6(p6)
-            p6 = F.interpolate(p6, size=(h, w), mode='nearest')
-            res.append(p6)
+            new_p6 = self.conv3x3_c6(p6)
+            new_p5 += F.interpolate(new_p6, size=p5.size()[2:], mode='nearest')
+        new_p4 = self.conv3x3_c4(p4) + F.interpolate(new_p5, size=p4.size()[2:], mode='nearest')
+        new_p3 = self.conv3x3_c3(p3) + F.interpolate(new_p4, size=p3.size()[2:], mode='nearest')
+        new_p2 = self.conv3x3_c2(p2) + F.interpolate(new_p3, size=p2.size()[2:], mode='nearest')
 
-        return torch.cat(res, dim=1)
+        res = [new_p2, new_p3, new_p4, new_p5]
+        if self.use_p6:
+            res.append(new_p6)
+        if self.for_detect:
+            return res
+        else:
+            for idx in range(len(res)):
+                new_res = F.interpolate(res[idx], size=(h, w), mode='nearest')
+                res[idx] = new_res
+            return torch.cat(res, dim=1)
 
 
 if __name__ == '__main__':
@@ -122,7 +118,7 @@ if __name__ == '__main__':
     add_dir = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
     sys.path.append(add_dir)
     
-    from backbones import resnet50
+    from backbone import resnet50
 
     backbone = resnet50(False)
     x = torch.rand(2, 3, 224, 224)
@@ -136,13 +132,18 @@ if __name__ == '__main__':
     print('='*58, '\n\n')
 
 
-    fpn = FPN([256, 512, 1024, 2048], 256, False, True)
+    fpn = FPN([256, 512, 1024, 2048], 256, True, False)
     fpn_output = fpn(backbone_output)
+
 
     print('=' * 15, 'FPN Ouput Information', '=' * 15)
     if isinstance(fpn_output, dict):
         for output in fpn_output:
             print(f'feature_map_size - {output} : {fpn_output[output].shape}')
+            print('-' * 58)
+    elif isinstance(fpn_output, (list, tuple)):
+        for idx, output in enumerate(fpn_output):
+            print(f'feature_map_size - fpn_output[{idx}] : {output.shape}')
             print('-' * 58)
     else:
         print(f'feature_map_size : {output.shape}')
