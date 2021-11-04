@@ -1,0 +1,63 @@
+name: TextFuseNet
+pretrained: ''
+base_pretrained: 'pretrained/maskrcnn_resnet50_fpn_coco-bf2d0c1e.pth'
+resume_pretrained: ''
+backbone: 'resnet50'
+backbone_args:
+  pretrained: true
+
+fpn_args:
+  in_chans: [256, 512, 1024, 2048]
+  mid_chans: 256
+  inplace: true
+  for_detect: true
+  use_p6: true
+
+num_classes: 66
+anchor_scales: [32, 64, 128, 256, 512]
+aspect_ratios: [0.5, 1.0, 2.0]
+
+# transform parameters
+transform:
+  min_size: [700, 800, 900, 1000]
+  max_size: 1100
+
+# RPN parameters
+RPN:
+  pre_nms_top_n_train: 2000
+  post_nms_top_n_train: 2000
+  pre_nms_top_n_test: 1000
+  post_nms_top_n_test: 1000
+  nms_thresh: 0.7
+  fg_iou_thresh: 0.7
+  bg_iou_thresh: 0.3
+  batch_size_per_image: 256
+  positive_fraction: 0.5
+  score_thresh: 0.0
+
+# Box parameters
+Box:
+  soft_nms: false
+  nms_thresh: 0.5
+  score_thresh: 0.05
+  detections_per_img: 100
+  fg_iou_thresh: 0.5
+  bg_iou_thresh: 0.5
+  batch_size_per_image: 512
+  positive_fraction: 0.25
+  loss_type: 'smooth_l1'
+  bbox_reg_weights: [10.0, 10.0, 5.0, 5.0]
+
+Seg:
+  chans: 256
+  num_feats: ['p2', 'p3', 'p4', 'p5']
+  num_conv3x3: 4
+  num_classes: 2
+  pooler_resolution: 14
+  pooler_scales: 0.0625
+  sampling_ratio: 2
+  pooler_type: 'ROIAlignV2'
+
+MultiFuse:
+  chans: 256
+  fpn_features_fused_level: 'p4'
