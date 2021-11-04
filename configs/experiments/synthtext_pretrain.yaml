@@ -13,7 +13,7 @@ general:
   distributed: false
 
 
-model: 'configs/model/dcn_resnet50.yaml'
+model: 'configs/model/dbnet_dcn_resnet50.yaml'
 post_processing:
   type: 'Seg2BoxOrPoly'
   args:
