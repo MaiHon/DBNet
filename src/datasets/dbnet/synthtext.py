@@ -39,12 +39,12 @@ class DBNetSynthTextDS(DBNetBaseDS):
             text_polys = text_polys.reshape(num_words, 4, 2)
             texts = [word for line in texts for word in line.split()]
             transcripts = [t for t in texts if len(t) > 0]
-            
+
             if num_words != len(transcripts):
                 continue
-            
+
             text_polys, transcripts = polygon_validity_check(text_polys, transcripts)
-            
+
             item = {}
             item['img_fp'] = str(image_fp)
             item['img_name'] = image_fp.stem
@@ -64,7 +64,7 @@ if __name__ == '__main__':
     from omegaconf import OmegaConf
     from torch.utils.data import DataLoader
     from src.datasets.processing import DBNetCollateFN
-    
+
     import matplotlib.pyplot as plt
 
     root = osp.abspath(osp.join(__file__, osp.pardir, osp.pardir, osp.pardir, osp.pardir, osp.pardir))
@@ -85,42 +85,40 @@ if __name__ == '__main__':
     pre_processes_args = main_cfg['train']['dataset']['args']['pre_processes']
     ignore_tags = main_cfg['train']['dataset']['args']['ignore_tags']
     filter_keys = main_cfg['train']['dataset']['args']['filter_keys']
-    
-    # collate_fn_name = main_cfg['train']['dataset']['args']['collate_fn']
-    # collate_fn = eval(collate_fn_name)()
+
     collate_fn = None
 
     trn_ds = DBNetSynthTextDS(root_path, annot_path, pre_processes_args, ignore_tags, filter_keys)
     trn_dl = DataLoader(trn_ds, batch_size=4, shuffle=False, num_workers=0, collate_fn=collate_fn)
-    
+
     visualize = False
     if visualize:
         debug = workspace / 'debug' / 'synthtext'
         if not osp.exists(debug):
             os.makedirs(debug)
-    
+
     for idx, batch in tqdm(enumerate(trn_dl), total=len(trn_dl)):
         img = batch['img'][0]
         prob_map = batch['prob_map'][0]
         thresh_map = batch['thresh_map'][0]
-        
+
         if visualize:
             img_fp = batch['img_fp'][0]
             img_name = img_fp.split(os.sep)[-1].split('.')[0]
-            
+
             fig, axes = plt.subplots(nrows=1, ncols=3, figsize=(15, 12))
             axes[0].imshow(img)
             axes[0].axis('off')
             axes[0].set_title('Img')
-            
+
             axes[1].imshow(prob_map)
             axes[1].axis('off')
             axes[1].set_title('Prob Map')
-            
+
             axes[2].imshow(thresh_map)
             axes[2].axis('off')
             axes[2].set_title('Thresh Map')
-            
+
             img_name = debug / (str(img_name) + '.png')
             plt.savefig(str(img_name))
             plt.close()

@@ -94,7 +94,7 @@ if __name__ == '__main__':
     from omegaconf import OmegaConf
     from torch.utils.data import DataLoader
     from src.datasets.processing import DBNetCollateFN
-    
+
     import matplotlib.pyplot as plt
 
     root = osp.abspath(osp.join(__file__, osp.pardir, osp.pardir, osp.pardir, osp.pardir, osp.pardir))
@@ -116,33 +116,33 @@ if __name__ == '__main__':
     pre_processes_args = main_cfg[mode]['dataset']['args']['pre_processes']
     ignore_tags = main_cfg[mode]['dataset']['args']['ignore_tags']
     filter_keys = main_cfg[mode]['dataset']['args']['filter_keys']
-    
+
     collate_fn = None
     trn_ds = DBNetICDAR13DS(root_path, annot_path, pre_processes_args, ignore_tags, filter_keys, split=mode)
     trn_dl = DataLoader(trn_ds, batch_size=1, shuffle=False, num_workers=0, collate_fn=collate_fn)
-    
+
     visualize = True
     if visualize:
         debug = workspace / 'debug' / 'icdar13' / mode
         if not osp.exists(debug):
             os.makedirs(debug)
-    
+
     for idx, batch in tqdm(enumerate(trn_dl), total=len(trn_dl)):
         vis_list = []
-        
+
         img = batch['img'][0]
         if mode not in ['valid', 'test']:
             prob_map = batch['prob_map'][0]
             thresh_map = batch['thresh_map'][0]
-            
+
             vis_list.append(("Thresh Map", thresh_map))
             vis_list.append(("Prob Map", prob_map))
         vis_list.append(("Img", img))
-        
+
         if visualize:
             img_fp = batch['img_fp'][0]
             img_name = img_fp.split(os.sep)[-1].split('.')[0]
-            
+
             if len(vis_list) > 1:
                 fig, axes = plt.subplots(nrows=1, ncols=len(vis_list), figsize=(15, 12))
                 for idx, vis in enumerate(vis_list):
@@ -153,7 +153,7 @@ if __name__ == '__main__':
                 plt.imshow(vis_list[0][1])
                 plt.axis('off')
                 plt.title(vis_list[0][0])
-                
+
             img_name = debug / (str(img_name) + '.png')
             plt.savefig(str(img_name))
             plt.close()

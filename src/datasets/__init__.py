@@ -18,7 +18,10 @@ from torch.utils.data import ConcatDataset, Subset
 from torchvision import transforms
 from src.datasets import *
 from src.datasets.dbnet import *
+from src.datasets.textfusenet import *
+from src.datasets.textfusenet import CollateFN
 from src.datasets.processing import DBNetCollateFN
+from src.datasets.transform import BasicTransform
 
 
 ROOT_DIR = Path(osp.abspath(osp.join(osp.abspath(__file__), osp.pardir, osp.pardir, osp.pardir)))

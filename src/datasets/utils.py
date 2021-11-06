@@ -112,7 +112,7 @@ def polygon_validity_check(text_polys, transcripts):
     valid_polys, valid_transcripts = [], []
 
     for poly, transcript in zip(text_polys, transcripts):
-        
+
         if is_valid_polygon(poly):
             valid_polys.append(poly)
             valid_transcripts.append(transcript)
@@ -121,9 +121,9 @@ def polygon_validity_check(text_polys, transcripts):
             if is_valid_polygon(poly):
                 valid_polys.append(poly)
                 valid_transcripts.append(transcript)
-            
+
     return np.array(valid_polys, dtype=text_polys.dtype), valid_transcripts
-    
+
 
 # from https://www.pyimagesearch.com/2016/03/21/ordering-coordinates-clockwise-with-python-and-opencv/
 def order_points(pts):
