@@ -1,6 +1,6 @@
 name: DBNet
 backbone: 'deformable_resnet50'
-pretrained: ''
+pretrained: 'ckpts/dbnet/SynthText_DCN_ResNet50/[SynthText]-quad_hmean=0.5279-icdar_hmean=0.5113-det_hmean=0.5333.ckpt'
 backbone_args:
   pretrained: True
 

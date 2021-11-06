@@ -19,8 +19,8 @@ aspect_ratios: [0.5, 1.0, 2.0]
 
 # transform parameters
 transform:
-  min_size: [700, 800, 900, 1000]
-  max_size: 1100
+  min_size: [800, 900, 1000, 1100, 1200]
+  max_size: 1200
 
 # RPN parameters
 RPN:

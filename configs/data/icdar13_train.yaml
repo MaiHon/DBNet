@@ -4,9 +4,11 @@ dataset:
   annot_path: 'ICDAR13_Focused/train_gt'
   args:
     ignore_tags: ["###"]
-    filter_keys: []
+    filter_keys: [img_path,img_name,text_polys,texts,ignore_tags,shape]
     return_origin: false
     return_text: false
+    char_masks: false
+    pseudo_labels_path: null
     pre_processes:
       - type: 'IaaAugment'
         args:

@@ -1,0 +1,120 @@
+experiment:
+  name: 'SynthText_Resnet50'
+  group: 'SynthText'
+  log_model: true
+  wandb: true
+  log_step: true
+
+
+general:
+  seed: 822
+  gpus: [0]
+  precision: 16
+  distributed: false
+
+
+model: 'configs/model/textfusenet_resnet50.yaml'
+train:
+  root: 'data'
+  base: 'configs/data/synthtext.yaml'
+  frac: [0.5]
+  max_epochs: 20
+  dataset: null
+
+
+  save_interval: 1
+  save_top_k: 10
+  limit_train_batches: 0.05
+
+
+  loader:
+    batch_size: 2
+    shuffle: true
+    pin_memory: true
+    num_workers: 8
+    collate_fn: 'CollateFN'
+
+
+  optimizer:
+    name: 'SGD'
+    args:
+        lr: 0.01
+        weight_decay: 0.0001
+        momentum: 0.9
+
+
+  scheduler:
+    name: 'MultiStepLR'
+    args:
+      milestones: [10]
+      gamma: 0.1
+
+
+  scaling:
+    # min_size: [800, 900, 1000, 1100, 1200]
+    # max_size: 1200
+    min_size: [600, 700, 800, 900, 1000]
+    max_size: 1000
+
+
+
+  # transform:
+  #   name: 'ComposedTransformation'
+  #   rotate_anchors: Null
+  #   rotate_range: 30
+  #   crop_aspect_ratio: 1.0
+  #   crop_size: [0.3, 0.8]
+  #   crop_size_by: 'longest'
+  #   hflip: false
+  #   vflip: false
+  #   cond_random_translate: true
+  #   min_image_overlap: 0.75
+  #   min_bbox_overlap: 0.8
+  #   min_bbox_count: 1
+  #   max_random_trials: 500
+  #   brightness: 0.3
+  #   contrast: 0.3
+  #   saturation: 0.3
+  #   hue: 0.3
+  #   mean: [0.485, 0.456, 0.406]
+  #   std: [0.229, 0.224, 0.225]
+  #   normalize: true
+  #   to_tensor: true
+  transform:
+    name: 'BasicTransform'
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]
+    normalize: true
+    to_tensor: true
+
+
+
+valid:
+  root: 'data'
+  base: 'configs/data/icdar13_valid.yaml'
+  dataset: None
+  frac: 1.0
+  box_thresh: 0.65
+
+  show: true
+  show_interval: 10
+  save_top_k: 5
+  save_interval: 0.5
+
+  scaling:
+    min_size: 800
+    max_size: 1500
+
+  loader:
+    batch_size: 1
+    shuffle: true
+    pin_memory: true
+    num_workers: 8
+    collate_fn: 'CollateFN'
+
+  transform:
+    name: 'BasicTransform'
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]
+    normalize: true
+    to_tensor: true

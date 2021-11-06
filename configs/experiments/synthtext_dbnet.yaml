@@ -30,7 +30,7 @@ train:
   frac: [0.5]
 
   dataset: null
-  
+
   show: true
   show_interval: 50
   save_top_k: 5
