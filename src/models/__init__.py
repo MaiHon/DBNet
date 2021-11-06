@@ -1,1 +1,2 @@
 from .lightning_dbnet import Lightning_DBNet
+from .lightning_textfusenet import Lightning_TextFuseNet

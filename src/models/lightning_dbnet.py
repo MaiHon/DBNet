@@ -16,7 +16,7 @@ import torch
 import torch.optim as optimizer
 from torchinfo import summary
 
-from src.modules import DBNet
+from src.modules import *
 from src.losses import DBLoss
 from src.datasets import get_dataloader
 from src.evals import calc_icdar_det_metrics, calc_deteval_metrics, cal_text_score
@@ -39,11 +39,11 @@ class Lightning_DBNet(pl.LightningModule):
 
         if debug:
             print("Config:\n")
-            print(OmegaConf.to_yaml(main_cfg))
-            
+            print(OmegaConf.to_yaml(cfgs))
+
             print('\nModel summary:\n')
             summary(self.model)
-            
+
             print('\nOptimizer:\n', self.optim)
             print('\nCriterion:\n', self.criterion)
             print('\nTrain loader:\n', self.trn_dl)
@@ -63,34 +63,34 @@ class Lightning_DBNet(pl.LightningModule):
             orig_dict.update(new_model_dict)
             self.model.load_state_dict(orig_dict)
             print("SynthText Pretrained loaded.\n")
-    
-    
+
+
     def configure_optimizers(self):
         optim_name = self.cfgs['train']['optimizer']['name']
         optim_args = self.cfgs['train']['optimizer']['args']
         self.optim = getattr(optimizer, optim_name)(self.parameters(), **optim_args)
         return self.optim
-    
-    
+
+
     def configure_criterion(self):
         self.criterion = DBLoss()
-        
+
 
     def configure_dataloader(self):
         distributed = self.cfgs['general']['distributed']
-        
+
         data_root_dir = Path(osp.join(ROOT_DIR, osp.pardir, 'data'))
-        self.trn_dl = get_dataloader(data_root_dir, 
-                                     self.cfgs['train'], 
-                                     self.cfgs['model']['name'], 
+        self.trn_dl = get_dataloader(data_root_dir,
+                                     self.cfgs['train'],
+                                     self.cfgs['model']['name'],
                                      distributed)
         self.avg_trn_loss = 0
         self.trn_step = 0
 
         if 'valid' in self.cfgs:
-            self.val_dl = get_dataloader(data_root_dir, 
-                                         self.cfgs['valid'], 
-                                         self.cfgs['model']['name'], 
+            self.val_dl = get_dataloader(data_root_dir,
+                                         self.cfgs['valid'],
+                                         self.cfgs['model']['name'],
                                          distributed)
             self.avg_precision = 0
             self.avg_recall = 0
@@ -98,8 +98,8 @@ class Lightning_DBNet(pl.LightningModule):
             self.val_step = 0
         else:
             self.val_dl = None
-            
-    
+
+
     def all_setup(self):
         # configs load
         if isinstance(self.cfgs['train']['base'], str):
@@ -111,11 +111,11 @@ class Lightning_DBNet(pl.LightningModule):
                 base = ROOT_DIR / base
                 train_data_cfg.append(OmegaConf.load(base))
         self.cfgs['train']['dataset'] = train_data_cfg
-        
+
         if 'valid' in self.cfgs:
             valid_data_cfg = OmegaConf.load(ROOT_DIR / self.cfgs['valid']['base'])
             self.cfgs['valid']['dataset'] = valid_data_cfg['dataset']
-            
+
         model_cfg_p = ROOT_DIR / self.cfgs['model']
         model_cfg = OmegaConf.load(model_cfg_p)
         self.cfgs['model'] = model_cfg
@@ -126,19 +126,19 @@ class Lightning_DBNet(pl.LightningModule):
         self.configure_criterion()
         self.configure_optimizers()
         self.configure_dataloader()
-        
-        
+
+
         # post processing setup
         self.post_process = eval(self.cfgs['post_processing']['type'])(**self.cfgs['post_processing']['args'])
         self.is_output_polygon = self.cfgs['post_processing']['is_output_polygon']
-        
-        
+
+
         # scheduler setup
         self.cur_step = 0
         self.factor = self.cfgs['train']['scheduler']['factor']
         self.lr = self.cfgs['train']['optimizer']['args']['lr']
-        
-        
+
+
         # train epoch or step setup
         self.train_on_step = True
         if 'max_epochs' in self.cfgs['train']:
@@ -147,48 +147,48 @@ class Lightning_DBNet(pl.LightningModule):
             self.train_on_step = False
         elif 'max_steps' in self.cfgs['train']:
             self.max_step = self.cfgs['train']['max_steps']
-            
-            
+
+
         # evaluation setup
         self.scoring_metric = Scoring(2)
         self.val_metric_cls = QuadMetric(self.is_output_polygon)
-        
-        
+
+
         # wandb setup
         self.log_step = self.cfgs['experiment']['log_step']
-        
-        
+
+
         # visualize setup
         self.trn_show = self.cfgs['train']['show']
         self.trn_show_interval = self.cfgs['train']['show_interval']
         if 'valid' in self.cfgs:
             self.val_show = self.cfgs['valid']['show']
             self.val_show_interval = self.cfgs['valid']['show_interval']
-            
+
         self.mean = self.cfgs['train']['dataset'][0]['dataset']['args']['transforms'][-1]['args']['mean']
         self.std = self.cfgs['train']['dataset'][0]['dataset']['args']['transforms'][-1]['args']['std']
-        
-        
+
+
     def forward(self, data):
         return self.model(data['img'])
-    
-    
+
+
     def update_lr(self, step):
         rate = np.power(1.0 - step / float(self.max_step), self.factor)
         for g in self.optim.param_groups:
             g['lr'] = rate * self.lr
-        
-    
+
+
     def on_train_epoch_start(self):
         self.trn_step = 0
-    
-    
+
+
     def on_train_epoch_end(self):
         if "max_epochs" in self.cfgs['train']:
             self.cur_epoch += 1
-            self.update_learning_rate(self.cur_epoch)
-    
-    
+            self.update_lr(self.cur_epoch)
+
+
     def training_step(self, batch, batch_idx):
         if self.train_on_step:
             self.cur_step += 1
@@ -198,7 +198,7 @@ class Lightning_DBNet(pl.LightningModule):
         img = batch['img']
         preds = self.model(img)
         losses = self.criterion(preds, batch)
-        
+
 
         # logging
         log_template = {
@@ -208,8 +208,8 @@ class Lightning_DBNet(pl.LightningModule):
             "trn_approx_map_loss": losses['approx_map_loss'].item(),
             "trn_total_loss": losses['loss'].item(),
         }
-        
-        
+
+
         # calc metric
         score_prob_map = cal_text_score(preds[:, 0, :, :],
                                         batch['prob_map'], batch['prob_mask'],
@@ -219,8 +219,8 @@ class Lightning_DBNet(pl.LightningModule):
         prob_map_iou = score_prob_map['Mean IoU']
         log_template["trn_acc"] = acc
         log_template["trn_prob_map_iou"] = prob_map_iou
-        
-        
+
+
         # visualize
         if self.trn_show and ((self.trn_step % self.trn_show_interval == 0)):
             boxes_batch, scores_batch = self.post_process(preds, batch, is_output_polygon=self.is_output_polygon, by_seg=True)
@@ -243,8 +243,8 @@ class Lightning_DBNet(pl.LightningModule):
         )
 
         return dict(loss=losses['loss'])
-    
-    
+
+
     def on_validation_epoch_start(self):
         self.avg_precision = 0
         self.avg_recall = 0
@@ -255,22 +255,22 @@ class Lightning_DBNet(pl.LightningModule):
         self.pred_bboxes_dict = {}
         self.gt_bboxes_dict = {}
         self.transcriptions_dict = {}
-        
+
 
     def on_validation_epoch_end(self):
         metrics = self.val_metric_cls.gather_measure(self.raw_metrics)
         ic_result = calc_icdar_det_metrics(self.pred_bboxes_dict, self.gt_bboxes_dict, self.transcriptions_dict)
         de_result = calc_deteval_metrics(self.pred_bboxes_dict, self.gt_bboxes_dict, self.transcriptions_dict)
-        
+
         log_template = {
             'icdar_hmean': ic_result['total']['hmean'],
             'icdar_recall': ic_result['total']['recall'],
             'icdar_precision': ic_result['total']['precision'],
-            
+
             'det_hmean': de_result['total']['hmean'],
             'det_recall': de_result['total']['recall'],
             'det_precision': de_result['total']['precision'],
-            
+
             'quad_hmean': metrics['fmeasure'].avg,
             'quad_recall': metrics['recall'].avg,
             'quad_precision': metrics['precision'].avg,
@@ -281,8 +281,8 @@ class Lightning_DBNet(pl.LightningModule):
                 on_step=False, on_epoch=True, prog_bar=True, logger=True, sync_dist=True
         )
         return log_template
-        
-    
+
+
     def validation_step(self, batch, batch_idx):
         self.val_step += 1
         img = batch['img']
@@ -290,7 +290,7 @@ class Lightning_DBNet(pl.LightningModule):
 
         # post process
         boxes_batch, scores_batch = self.post_process(preds, batch, is_output_polygon=self.is_output_polygon)
-        
+
         # calc score
         raw_metric = self.val_metric_cls.validate_measure(batch, (boxes_batch, scores_batch))
         self.raw_metrics.append(raw_metric)
@@ -321,17 +321,17 @@ class Lightning_DBNet(pl.LightningModule):
             vis['val_polygons'] = wandb.Image(polygons)
             self.logger.experiment.log(vis)
 
-    
+
     def show(self, batch, preds):
         show_labels, show_preds = visuailze_imgs(batch, preds)
         return show_labels, show_preds
-        
-        
+
+
 if __name__ == "__main__":
     from pytorch_lightning import seed_everything
-    
+
     seed_everything(822)
     cfg_path = ROOT_DIR / 'configs' / 'experiments' / 'synthtext_pretrain.yaml'
-    
+
     main_cfg = OmegaConf.load(cfg_path)
     model = Lightning_DBNet(main_cfg, debug=True)
