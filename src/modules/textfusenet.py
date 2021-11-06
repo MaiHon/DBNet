@@ -2,6 +2,8 @@ import os
 import sys
 from omegaconf import ListConfig
 
+from models.lightning_textfusenet import ROOT_DIR
+
 add_dir = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(add_dir)
 add_dir = f'{os.path.sep}'.join(add_dir.split(os.path.sep)[:-1])
@@ -150,8 +152,10 @@ class TextFuseNet(nn.Module):
         self.roi_heads.mask_predictor = mask_predictor
 
         if cfg['base_pretrained']:
+            base_pretrain_p = ROOT_DIR / cfg['base_pretrained']
+
             model_dict = self.state_dict()
-            pretrained_dict = torch.load(cfg['base_pretrained'], map_location='cpu')
+            pretrained_dict = torch.load(base_pretrain_p, map_location='cpu')
             pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict}
             model_dict.update(pretrained_dict)
             self.load_state_dict(model_dict, strict=False)
