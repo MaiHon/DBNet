@@ -8,6 +8,112 @@ import torch
 import torchvision.utils as vutils
 
 
+# TODO: need to check it works properly
+def mask2bbox(mask):
+    contour, _ = cv2.findContours((mask*255).astype(np.uint8), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    if contour:
+        contour = contour[0]
+        epsilon = .005 * cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, epsilon, True)
+        points = approx.reshape((-1, 2))
+
+        bounding_box = cv2.minAreaRect(contour)
+        points = sorted(list(cv2.boxPoints(bounding_box)), key=lambda x: x[0])
+
+        index_1, index_2, index_3, index_4 = 0, 1, 2, 3
+        if points[1][1] > points[0][1]:
+            index_1 = 0
+            index_4 = 1
+        else:
+            index_1 = 1
+            index_4 = 0
+        if points[3][1] > points[2][1]:
+            index_2 = 2
+            index_3 = 3
+        else:
+            index_2 = 3
+            index_3 = 2
+
+        box = np.array([points[index_1], points[index_2], points[index_3], points[index_4]])
+        box = [(np.array(box)[:, 0].min(), np.array(box)[:, 1].min()), (np.array(box)[:, 0].max(), np.array(box)[:, 1].max())]
+        return box, True
+    return None, False
+
+
+def final_prediction(detections, threshold=0.65, total_labels=None):
+    # list(dict_keys(['boxes', 'labels', 'scores', 'masks']))
+    # boxes : coordinates of detected boxes
+    # labels : class label index of detected boxes
+    # scores : confidence score of detectd boxes
+    # masks : #detected x masks
+    # print(list(detections['scores']))
+    scores = list(detections['scores'].detach().cpu().numpy())
+    thresholded_preds_inidices = [scores.index(i) for i in scores if i > threshold]
+    thresholded_preds_count = len(thresholded_preds_inidices)
+
+    # only masks upper threshold left
+    masks = (detections['masks'] > 0.5).squeeze().detach().cpu().numpy()
+    masks = masks[:thresholded_preds_count]
+
+    boxes = [[(i[0], i[1]), (i[2], i[3])] for i in detections['boxes'].detach().cpu()]
+    boxes = boxes[:thresholded_preds_count]
+
+    if total_labels is None:
+        labels = ['word' if i == 1 else 'char' for i in detections['labels']]
+    else:
+        labels = []
+        for i in detections['labels']:
+            it = i.item()
+            if it in total_labels: labels.append(total_labels[it])
+            else: labels.append('special')
+
+    return masks, boxes, labels
+
+
+def draw_boxes_masks(image, masks, boxes, labels, polygon=False):
+    if len(masks.shape) == 2:
+            masks = masks[None]
+
+    if len(boxes):
+        for i in range(len(masks)):
+            # colarize
+            COLORS = np.random.uniform(0, 255, size=(64, 3))
+            color = COLORS[random.randrange(0, len(COLORS))]
+
+            image = np.array(image)
+            image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+            if not polygon:
+                if len(boxes[i]) == 2:
+                    x_min, y_min = map(int, boxes[i][0])
+                    x_max, y_max = map(int, boxes[i][1])
+                elif len(boxes[i]) == 4:
+                    x_min, y_min, x_max, y_max = map(int, boxes[i])
+
+                cv2.rectangle(image, (x_min, y_min), (x_max, y_max), color=color, thickness=3)
+            else:
+                poly = np.array(boxes[i]).reshape(-1, 2).astype(np.int32)
+                x_min, y_min = np.min(poly[:, 0]), np.min(poly[:, 1])
+                image = cv2.polylines(image, [poly], True, color, 2)
+
+            cv2.putText(image, labels[i], (x_min, y_min - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, color,
+                        thickness=1, lineType=cv2.LINE_AA)
+    else:
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+
+    return image
+
+
+
+def denormalize_image(image, mean=(0.485, 0.456, 0.406), std=(0.229, 0.224, 0.225)):
+        img_cp = image.copy()
+        img_cp *= std
+        img_cp += mean
+        img_cp *= 255.0
+        img_cp = np.clip(img_cp, 0, 255).astype(np.uint8)
+        return img_cp
+
+
 def denormalize(batch, mean, std):
     # denorm original img
     cp_img = batch['img'].clone()
