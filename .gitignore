@@ -265,3 +265,4 @@ outputs
 debug
 ckpts
 init_setup.sh
+pretrained
