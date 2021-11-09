@@ -1,0 +1,37 @@
+experiment:
+  name: 'icdar15_dcn_resnet50_Shortsize_736'
+  group: 'ICDAR_Evaluation'
+  wandb: false
+  score: true
+  save_demo_image: true
+
+
+model: 'configs/model/dbnet_dcn_resnet50.yaml'
+finetuned: 'ckpts/dbnet/ICDAR15_DCN_ResNet50/[ICDAR15]quad_hmean=0.8413-icdar_hmean=0.7003-det_hmean=0.6920.ckpt'
+
+
+post_processing:
+  type: 'Seg2BoxOrPoly'
+  args:
+    thresh: 0.3
+    box_thresh: 0.6
+    max_candidates: 1000
+    unclip_ratio: 1.5
+  is_output_polygon: false
+
+
+test:
+  base: 'configs/data/icdar15_valid.yaml'
+  dataset: None
+  device: "cuda:0"
+  debug: False
+
+  show: true
+  show_interval: 1
+
+  loader:
+    batch_size: 1
+    shuffle: false
+    pin_memory: false
+    num_workers: 0
+    collate_fn: 'DBNetCollateFN'
